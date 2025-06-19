@@ -1,8 +1,10 @@
 import sys
 from PyQt5.QtWidgets import (
-    QApplication, QWidget, QPushButton, QSlider, QLabel, QColorDialog, QVBoxLayout, QHBoxLayout
+    QApplication, QWidget, QPushButton, QSlider, QLabel, QColorDialog, 
+    QVBoxLayout, QHBoxLayout, QFrame, QGroupBox
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QPalette, QColor
 import serial
 import serial.tools.list_ports
 
@@ -10,54 +12,126 @@ class SmartLightGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Smart RGB Light Controller")
-        self.resize(400, 300)
+        self.resize(500, 400)
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #2b2b2b;
+                color: #ffffff;
+                font-family: 'Segoe UI', Arial;
+            }
+            QPushButton {
+                background-color: #0d47a1;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                min-width: 100px;
+            }
+            QPushButton:hover {
+                background-color: #1565c0;
+            }
+            QPushButton:disabled {
+                background-color: #424242;
+            }
+            QPushButton:checked {
+                background-color: #c62828;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #424242;
+                height: 8px;
+                background: #424242;
+                margin: 2px 0;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #0d47a1;
+                border: none;
+                width: 18px;
+                margin: -5px 0;
+                border-radius: 9px;
+            }
+            QSlider::handle:horizontal:hover {
+                background: #1565c0;
+            }
+            QLabel {
+                color: #e0e0e0;
+            }
+            QGroupBox {
+                border: 1px solid #424242;
+                border-radius: 6px;
+                margin-top: 12px;
+                padding-top: 16px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+            }
+        """)
 
         self.serial_port = None
         self.connected = False
-
         self.init_ui()
 
     def init_ui(self):
-        # Connect Button
+        main_layout = QVBoxLayout()
+        main_layout.setSpacing(20)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+
+        # Connection Group
+        connection_group = QGroupBox("Connection")
+        connection_layout = QVBoxLayout()
         self.btn_connect = QPushButton("Connect")
         self.btn_connect.clicked.connect(self.connect_serial)
+        connection_layout.addWidget(self.btn_connect)
+        connection_group.setLayout(connection_layout)
+        main_layout.addWidget(connection_group)
 
-        # On/Off Button
+        # Control Group
+        control_group = QGroupBox("Light Control")
+        control_layout = QVBoxLayout()
+        
+        # Power and Color buttons
+        button_layout = QHBoxLayout()
         self.btn_onoff = QPushButton("Turn ON")
         self.btn_onoff.setEnabled(False)
         self.btn_onoff.setCheckable(True)
         self.btn_onoff.clicked.connect(self.toggle_onoff)
-
-        # Color Picker Button
+        
         self.btn_color = QPushButton("Pick Color")
         self.btn_color.setEnabled(False)
         self.btn_color.clicked.connect(self.open_color_picker)
+        
+        button_layout.addWidget(self.btn_onoff)
+        button_layout.addWidget(self.btn_color)
+        control_layout.addLayout(button_layout)
 
-        # Brightness Slider
+        # Brightness control
+        brightness_layout = QVBoxLayout()
+        brightness_label = QLabel("Brightness")
         self.slider_brightness = QSlider(Qt.Horizontal)
         self.slider_brightness.setMinimum(0)
         self.slider_brightness.setMaximum(255)
         self.slider_brightness.setValue(128)
         self.slider_brightness.setEnabled(False)
         self.slider_brightness.valueChanged.connect(self.brightness_changed)
+        brightness_layout.addWidget(brightness_label)
+        brightness_layout.addWidget(self.slider_brightness)
+        control_layout.addLayout(brightness_layout)
+        
+        control_group.setLayout(control_layout)
+        main_layout.addWidget(control_group)
 
-        # Status Label
+        # Status Group
+        status_group = QGroupBox("Status")
+        status_layout = QVBoxLayout()
         self.lbl_status = QLabel("Disconnected")
+        self.lbl_status.setAlignment(Qt.AlignCenter)
+        status_layout.addWidget(self.lbl_status)
+        status_group.setLayout(status_layout)
+        main_layout.addWidget(status_group)
 
-        # Layout
-        vbox = QVBoxLayout()
-        vbox.addWidget(self.btn_connect)
-
-        hbox = QHBoxLayout()
-        hbox.addWidget(self.btn_onoff)
-        hbox.addWidget(self.btn_color)
-        vbox.addLayout(hbox)
-
-        vbox.addWidget(QLabel("Brightness"))
-        vbox.addWidget(self.slider_brightness)
-        vbox.addWidget(self.lbl_status)
-
-        self.setLayout(vbox)
+        self.setLayout(main_layout)
 
         # Initial color
         self.current_color = (255, 255, 255)
